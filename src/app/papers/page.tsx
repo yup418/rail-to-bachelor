@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ interface ExamPaper {
     };
 }
 
-export default function PapersPage() {
+function PapersContent() {
     const searchParams = useSearchParams();
     const [papers, setPapers] = useState<ExamPaper[]>([]);
     const [loading, setLoading] = useState(true);
@@ -143,4 +143,12 @@ export default function PapersPage() {
             )}
         </div>
     )
+}
+
+export default function PapersPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">加载中...</div>}>
+            <PapersContent />
+        </Suspense>
+    );
 }
