@@ -13,6 +13,7 @@ export default function Home() {
   const [stats, setStats] = useState({ accuracy: 0, todayCount: 0, weakestTag: "暂无数据" });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     fetch('/api/stats')
@@ -24,14 +25,36 @@ export default function Home() {
       })
       .catch(err => console.error(err));
 
-    // Check admin status
+    // Check login and admin status
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(data => {
-        setIsAdmin(data.user?.role === 'ADMIN');
+        if (data.user) {
+          setIsLoggedIn(true);
+          setIsAdmin(data.user.role === 'ADMIN');
+        } else {
+          setIsLoggedIn(false);
+          setIsAdmin(false);
+        }
       })
-      .catch(() => setIsAdmin(false));
+      .catch(() => {
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+      });
   }, []);
+
+  // 检查登录状态
+  const checkLogin = (e: React.MouseEvent, href: string) => {
+    if (!isLoggedIn) {
+      e.preventDefault();
+      if (confirm('请先登录才能使用此功能！\n\n点击"确定"前往登录页面')) {
+        window.location.href = '/login';
+      }
+      return false;
+    }
+    return true;
+  };
+
 
   // Sidebar Content Component
   const SidebarContent = () => (
@@ -61,7 +84,7 @@ export default function Home() {
       <div className="space-y-3 pt-4 border-t border-neutral-200">
         <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider px-2">快捷入口</h3>
         <nav className="space-y-1">
-          <Link href="/mistakes" onClick={() => setMobileMenuOpen(false)}>
+          <a href="/mistakes" onClick={(e) => { if (checkLogin(e, '/mistakes')) setMobileMenuOpen(false); }} className="block">
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer group">
               <AlertCircle className="w-4 h-4 text-red-500" />
               <div className="flex-1">
@@ -69,17 +92,17 @@ export default function Home() {
                 <div className="text-xs text-neutral-500">3 个待复习</div>
               </div>
             </div>
-          </Link>
-          <Link href="/review" onClick={() => setMobileMenuOpen(false)}>
+          </a>
+          <a href="/review" onClick={(e) => { if (checkLogin(e, '/review')) setMobileMenuOpen(false); }} className="block">
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer group">
-              <Clock className="w-4 h-4 text-purple-500" />
+              <Clock className="w-4 h-4 text-blue-500" />
               <div className="flex-1">
-                <div className="text-sm font-medium text-neutral-900 group-hover:text-purple-600 transition-colors">复习</div>
-                <div className="text-xs text-neutral-500">记忆修复</div>
+                <div className="text-sm font-medium text-neutral-900 group-hover:text-blue-600 transition-colors">复习计划</div>
+                <div className="text-xs text-neutral-500">智能推荐</div>
               </div>
             </div>
-          </Link>
-          <Link href="/records" onClick={() => setMobileMenuOpen(false)}>
+          </a>
+          <a href="/records" onClick={(e) => { if (checkLogin(e, '/records')) setMobileMenuOpen(false); }} className="block">
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer group">
               <CheckCircle className="w-4 h-4 text-green-500" />
               <div className="flex-1">
@@ -87,7 +110,7 @@ export default function Home() {
                 <div className="text-xs text-neutral-500">查看历史</div>
               </div>
             </div>
-          </Link>
+          </a>
         </nav>
       </div>
     </>
@@ -184,7 +207,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
               >
-                <Link href="/papers?subject=MATH&type=REAL">
+                <a href="/papers?subject=MATH&type=REAL" onClick={(e) => checkLogin(e, '/papers?subject=MATH&type=REAL')}>
                   <Card className="h-full bg-white border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-300 cursor-pointer group">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between mb-2">
@@ -203,7 +226,7 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </a>
               </motion.div>
 
               {/* 高数练习题库 */}
@@ -212,7 +235,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.2 }}
               >
-                <Link href="/papers?subject=MATH&type=PRACTICE">
+                <a href="/papers?subject=MATH&type=PRACTICE" onClick={(e) => checkLogin(e, '/papers?subject=MATH&type=PRACTICE')}>
                   <Card className="h-full bg-white border-2 border-cyan-200 hover:border-cyan-400 hover:shadow-lg transition-all duration-300 cursor-pointer group">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between mb-2">
@@ -231,7 +254,7 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </a>
               </motion.div>
 
               {/* 英语真题库 */}
@@ -240,7 +263,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.3 }}
               >
-                <Link href="/papers?subject=ENGLISH&type=REAL">
+                <a href="/papers?subject=ENGLISH&type=REAL" onClick={(e) => checkLogin(e, '/papers?subject=ENGLISH&type=REAL')}>
                   <Card className="h-full bg-white border-2 border-emerald-200 hover:border-emerald-400 hover:shadow-lg transition-all duration-300 cursor-pointer group">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between mb-2">
@@ -259,7 +282,7 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </a>
               </motion.div>
 
               {/* 英语练习题库 */}
@@ -268,7 +291,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.4 }}
               >
-                <Link href="/papers?subject=ENGLISH&type=PRACTICE">
+                <a href="/papers?subject=ENGLISH&type=PRACTICE" onClick={(e) => checkLogin(e, '/papers?subject=ENGLISH&type=PRACTICE')}>
                   <Card className="h-full bg-white border-2 border-teal-200 hover:border-teal-400 hover:shadow-lg transition-all duration-300 cursor-pointer group">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between mb-2">
@@ -287,7 +310,7 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </a>
               </motion.div>
             </div>
           </div>
