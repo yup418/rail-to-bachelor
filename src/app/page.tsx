@@ -88,17 +88,6 @@ export default function Home() {
               </div>
             </div>
           </Link>
-          {isAdmin && (
-            <Link href="/import" onClick={() => setMobileMenuOpen(false)}>
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer group">
-                <FileUp className="w-4 h-4 text-orange-500" />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-neutral-900 group-hover:text-orange-600 transition-colors">题库导入</div>
-                  <div className="text-xs text-neutral-500">批量导入</div>
-                </div>
-              </div>
-            </Link>
-          )}
         </nav>
       </div>
     </>
