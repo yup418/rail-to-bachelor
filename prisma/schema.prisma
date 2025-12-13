@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Profile & Gamification
+model User {
+  id          String   @id @default(uuid())
+  username    String   @default("考生")
+  email       String?  @unique
+  password    String?  // Simple password for now (should be hashed in production)
+  avatarUrl   String?
+  role        String   @default("USER") // "ADMIN" or "USER"
+  
+  // Gamification
+  level       Int      @default(1) // 1=搬砖工, 10=总工程师
+  xp          Int      @default(0)
+  streak      Int      @default(0) // 连续打卡天数
+  lastLogin   DateTime @default(now())
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  dailyTasks  DailyTask[]
+  studyRecords StudyRecord[]
+  progress    QuestionProgress[]
+  examRecords ExamRecord[]
+}
+
+// Global Topic Tags (e.g. "To Limits", "Virtual Mood")
+model Tag {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  category  String     // MATH or ENGLISH
+  questions Question[]
+}
+
+// The core Question Bank
+model Question {
+  id             String   @id @default(uuid())
+  content        String   // Markdown content, LaTeX support
+  
+  // For Choice Questions
+  options        String?  // JSON encoded array of strings e.g. ["A. 1", "B. 0"]
+  
+  answer         String   // Correct answer text
+  explanation    String   // Detailed solution in Markdown
+  
+  type           String   // CHOICE, FILL, CALCULATION, PROOF
+  difficulty     Int      @default(3) // 1-5 stars
+  source         String?  // e.g. "2024真题"
+  
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  tags           Tag[]
+  records        StudyRecord[]
+  dailyTasks     DailyTask[] // implicit many-to-many
+  progress       QuestionProgress[]
+  // Relation to ExamPaper
+  examPapers     ExamPaper[] // Implicit many-to-many or explicit if needed. Implicit is fine.
+}
+
+model ExamPaper {
+    id String @id @default(uuid())
+    title String // e.g. "2023年陕西省普通高等教育专升本招生考试高等数学"
+    year Int // e.g. 2023
+    subject String // "MATH" or "ENGLISH"
+    paperType String @default("REAL") // "REAL" or "PRACTICE"
+    
+    questions Question[]
+    examRecords ExamRecord[]
+    
+    createdAt DateTime @default(now())
+}
+
+// Generated Daily Mission
+model DailyTask {
+  id        String   @id @default(uuid())
+  date      DateTime @default(now()) // Should be truncated to YYYY-MM-DD
+  
+  title     String   @default("今日特训")
+  isCompleted Boolean @default(false)
+  
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  
+  questions Question[]
+}
+
+// History of every answer
+model StudyRecord {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  
+  isCorrect  Boolean
+  userAnswer String?
+  duration   Int?     // Time spent in seconds
+  
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId String
+}
+
+// Spaced Repetition Status
+model QuestionProgress {
+  id             String   @id @default(uuid())
+  
+  // SMA-2 or Leibner system fields
+  nextReviewDate DateTime?
+  interval       Int      @default(1) // Days
+  easeFactor     Float    @default(2.5)
+  streak         Int      @default(0) // Correct streak for this specific question
+  
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId String
+  
+  @@unique([userId, questionId])
+}
+
+// Exam Records - 答题记录
+model ExamRecord {
+  id             String   @id @default(uuid())
+  
+  answers        String   // JSON encoded answers map
+  score          Int      // 得分
+  totalQuestions Int      // 总题数
+  timeSpent      Int      // 用时（秒）
+  completedAt    DateTime @default(now())
+  
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  
+  paper     ExamPaper @relation(fields: [paperId], references: [id])
+  paperId   String
+  
+  createdAt DateTime @default(now())
+}
