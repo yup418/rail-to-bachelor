@@ -28,8 +28,7 @@ export async function GET(
                             }
                         }
                     }
-                },
-                answers: true
+                }
             }
         });
 
@@ -37,7 +36,16 @@ export async function GET(
             return NextResponse.json({ error: "记录未找到" }, { status: 404 });
         }
 
-        return NextResponse.json({ record });
+        // 解析 answers JSON 字段
+        const answersData = JSON.parse(record.answers);
+
+        // 构建返回数据
+        const recordWithAnswers = {
+            ...record,
+            answers: answersData
+        };
+
+        return NextResponse.json({ record: recordWithAnswers });
     } catch (error: any) {
         console.error('Get record detail error:', error);
         return NextResponse.json({ error: error.message || "获取记录失败" }, { status: 500 });
