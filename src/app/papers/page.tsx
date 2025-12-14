@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Calculator, FileText, ScrollText, Filter } from "lucide-react";
+import { ArrowLeft, BookOpen, Calculator, FileText, ScrollText, Filter, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -30,12 +30,23 @@ function PapersContent() {
     const searchParams = useSearchParams();
     const [papers, setPapers] = useState<ExamPaper[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // 获取 URL 参数
     const subjectFilter = searchParams.get('subject'); // MATH 或 ENGLISH
     const typeFilter = searchParams.get('type'); // REAL 或 PRACTICE
 
     useEffect(() => {
+        // 检查管理员权限
+        fetch('/api/auth/me')
+            .then(res => res.json())
+            .then(data => {
+                if (data.user?.role === 'ADMIN') {
+                    setIsAdmin(true);
+                }
+            });
+
+        // 加载试卷列表
         fetch('/api/papers')
             .then(res => res.json())
             .then(data => {
@@ -45,6 +56,31 @@ function PapersContent() {
             })
             .finally(() => setLoading(false));
     }, []);
+
+    // 删除试卷
+    const handleDeletePaper = async (paperId: string, paperTitle: string) => {
+        if (!confirm(`确定要删除试卷"${paperTitle}"吗？\n\n此操作将删除试卷及其所有题目，且不可撤销！`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/papers/${paperId}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                alert('试卷已删除');
+                // 重新加载试卷列表
+                setPapers(papers.filter(p => p.id !== paperId));
+            } else {
+                const data = await res.json();
+                alert(`删除失败: ${data.error || '未知错误'}`);
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('删除失败，请检查网络连接');
+        }
+    };
 
     // 筛选试卷
     const filteredPapers = papers.filter(paper => {
@@ -119,7 +155,23 @@ function PapersContent() {
                                 key={paper.id}
                                 whileHover={{ y: -5 }}
                                 transition={{ type: "spring", stiffness: 300 }}
+                                className="relative"
                             >
+                                {/* 管理员删除按钮 */}
+                                {isAdmin && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleDeletePaper(paper.id, paper.title);
+                                        }}
+                                        className="absolute top-2 right-2 z-10 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors"
+                                        title="删除试卷"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+
                                 <Link href={`/papers/${paper.id}`}>
                                     <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
                                         <CardHeader>
