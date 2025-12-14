@@ -5,12 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCircle, Clock, Flag, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCircle, Clock, Flag, Edit, Trash2, Save } from "lucide-react";
 import Link from "next/link";
 import { MathText } from "@/components/MathText";
 import { motion, AnimatePresence } from "framer-motion";
 import { QuestionEditDialog } from "@/components/QuestionEditDialog";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ProgressDialog } from "@/components/ProgressDialog";
 
 interface Tag {
     id: string;
@@ -51,10 +52,13 @@ export default function PaperExamPage() {
     const [userAnswers, setUserAnswers] = useState<Map<string, string>>(new Map());
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [showReport, setShowReport] = useState(false);
-    const [startTime] = useState(Date.now());
+    const [startTime, setStartTime] = useState(Date.now());
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isAdmin, setIsAdmin] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+    const [showProgressDialog, setShowProgressDialog] = useState(false);
+    const [savedProgress, setSavedProgress] = useState<any>(null);
+    const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
     useEffect(() => {
         if (!params.id) return;
@@ -71,13 +75,107 @@ export default function PaperExamPage() {
             .catch(() => setIsAdmin(false));
     }, []);
 
-    const loadPaper = () => {
+    const loadPaper = async () => {
         setLoading(true);
-        fetch(`/api/papers/${params.id}`)
-            .then(res => res.json())
-            .then(data => setPaper(data))
-            .finally(() => setLoading(false));
+        try {
+            const res = await fetch(`/api/papers/${params.id}`);
+            const data = await res.json();
+            setPaper(data);
+
+            // 加载答题进度
+            await loadProgress();
+        } finally {
+            setLoading(false);
+        }
     };
+
+    // 加载答题进度
+    const loadProgress = async () => {
+        try {
+            const res = await fetch(`/api/papers/${params.id}/progress`);
+            const data = await res.json();
+
+            if (data.progress) {
+                setSavedProgress(data.progress);
+                setShowProgressDialog(true);
+            }
+        } catch (error) {
+            console.error('Load progress error:', error);
+        }
+    };
+
+    // 保存答题进度
+    const saveProgress = async () => {
+        if (!paper || isSubmitted) return;
+
+        try {
+            const answersObj: Record<string, string> = {};
+            userAnswers.forEach((value, key) => {
+                answersObj[key] = value;
+            });
+
+            await fetch(`/api/papers/${params.id}/progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentAnswers: answersObj,
+                    currentIndex,
+                    timeSpent: elapsedTime
+                })
+            });
+        } catch (error) {
+            console.error('Save progress error:', error);
+        }
+    };
+
+    // 继续答题
+    const handleContinue = () => {
+        if (savedProgress) {
+            try {
+                const answers = JSON.parse(savedProgress.currentAnswers);
+                const newAnswers = new Map<string, string>();
+                Object.entries(answers).forEach(([key, value]) => {
+                    newAnswers.set(key, value as string);
+                });
+                setUserAnswers(newAnswers);
+                setCurrentIndex(savedProgress.currentIndex);
+                setElapsedTime(savedProgress.timeSpent);
+                setStartTime(Date.now() - savedProgress.timeSpent * 1000);
+            } catch (error) {
+                console.error('Parse progress error:', error);
+            }
+        }
+        setShowProgressDialog(false);
+    };
+
+    // 重新开始
+    const handleRestart = async () => {
+        // 删除保存的进度
+        try {
+            await fetch(`/api/papers/${params.id}/progress`, {
+                method: 'DELETE'
+            });
+        } catch (error) {
+            console.error('Delete progress error:', error);
+        }
+
+        setUserAnswers(new Map());
+        setCurrentIndex(0);
+        setElapsedTime(0);
+        setStartTime(Date.now());
+        setShowProgressDialog(false);
+    };
+
+    // 自动保存（每30秒）
+    useEffect(() => {
+        if (!autoSaveEnabled || isSubmitted) return;
+
+        const interval = setInterval(() => {
+            saveProgress();
+        }, 30000); // 30秒保存一次
+
+        return () => clearInterval(interval);
+    }, [userAnswers, currentIndex, elapsedTime, autoSaveEnabled, isSubmitted]);
 
     // 计时器
     useEffect(() => {
@@ -187,6 +285,12 @@ export default function PaperExamPage() {
                 });
 
                 await Promise.all(studyRecordPromises);
+
+                // 删除答题进度
+                await fetch(`/api/papers/${params.id}/progress`, {
+                    method: 'DELETE'
+                });
+
                 console.log('所有答题记录已保存');
             } catch (e) {
                 console.error('保存答题记录失败:', e);
@@ -222,6 +326,22 @@ export default function PaperExamPage() {
     const currentOptions = currentQuestion?.options ? JSON.parse(currentQuestion.options) as string[] : [];
     const currentUserAnswer = userAnswers.get(currentQuestion?.id || '');
     const score = calculateScore();
+
+    // 进度恢复对话框
+    if (showProgressDialog && savedProgress) {
+        return (
+            <ProgressDialog
+                open={showProgressDialog}
+                onContinue={handleContinue}
+                onRestart={handleRestart}
+                progress={{
+                    currentIndex: savedProgress.currentIndex,
+                    timeSpent: savedProgress.timeSpent,
+                    totalQuestions: paper.questions.length
+                }}
+            />
+        );
+    }
 
     // 管理员题目管理视图
     if (isAdmin) {
@@ -502,6 +622,15 @@ export default function PaperExamPage() {
                         <Badge variant="outline">
                             {userAnswers.size} / {paper.questions.length} 已答
                         </Badge>
+                        <Button
+                            onClick={saveProgress}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                        >
+                            <Save className="w-4 h-4" />
+                            保存进度
+                        </Button>
                         <Button
                             onClick={handleSubmit}
                             disabled={userAnswers.size < paper.questions.length}

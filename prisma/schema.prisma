@@ -33,6 +33,7 @@ model User {
   studyRecords StudyRecord[]
   progress    QuestionProgress[]
   examRecords ExamRecord[]
+  examProgress ExamProgress[]
 }
 
 // Global Topic Tags (e.g. "To Limits", "Virtual Mood")
@@ -78,6 +79,7 @@ model ExamPaper {
     
     questions Question[]
     examRecords ExamRecord[]
+    examProgress ExamProgress[]
     
     createdAt DateTime @default(now())
 }
@@ -148,4 +150,24 @@ model ExamRecord {
   paperId   String
   
   createdAt DateTime @default(now())
+}
+
+// 答题进度（未完成的答题）
+model ExamProgress {
+  id             String   @id @default(uuid())
+  
+  currentAnswers String   // JSON encoded current answers
+  currentIndex   Int      @default(0) // 当前题目索引
+  timeSpent      Int      @default(0) // 已用时间（秒）
+  
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  
+  paper     ExamPaper @relation(fields: [paperId], references: [id])
+  paperId   String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, paperId]) // 每个用户每个试卷只能有一个进度
 }
