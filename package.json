@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:webpack": "NEXT_DISABLE_TURBO=1 next dev",
-    "build": "next build",
+    "build": "prisma generate && npx prisma db push --accept-data-loss && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate"
