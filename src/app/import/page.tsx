@@ -68,67 +68,56 @@ export default function ImportPage() {
     // 解析 Markdown
     const parseMarkdown = (md: string): ParsedQuestion[] => {
         const questions: ParsedQuestion[] = [];
-        const lines = md.split('\n');
-        let currentQuestion: Partial<ParsedQuestion> | null = null;
-        let currentOptions: string[] = [];
+        const sections = md.split(/\*\*题目\s+\d+\*\*/);
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
+        for (let i = 1; i < sections.length; i++) {
+            const section = sections[i].trim();
+            const lines = section.split('\n').map(l => l.trim()).filter(l => l);
 
-            // 检测题目开始
-            if (line.match(/^##\s*\d+[\.\、]/)) {
-                // 保存上一道题
-                if (currentQuestion && currentQuestion.content) {
-                    questions.push({
-                        content: currentQuestion.content,
-                        type: currentOptions.length > 0 ? 'CHOICE' : 'FILL',
-                        options: currentOptions,
-                        answer: currentQuestion.answer || '',
-                        explanation: currentQuestion.explanation || '',
-                    });
+            let content = '';
+            let options: string[] = [];
+            let answer = '';
+            let explanation = '';
+            let inExplanation = false;
+
+            for (const line of lines) {
+                // 检测题目内容
+                if (line.startsWith('题目：') || line.startsWith('题目:')) {
+                    content = line.replace(/^题目[：:]\s*/, '');
                 }
-
-                // 开始新题
-                currentQuestion = {
-                    content: line.replace(/^##\s*\d+[\.\、]\s*/, ''),
-                };
-                currentOptions = [];
-            }
-            // 检测选项
-            else if (line.match(/^[A-D][\.\、]/)) {
-                currentOptions.push(line);
-            }
-            // 检测答案
-            else if (line.match(/\*\*答案\*\*[:：]/)) {
-                if (currentQuestion) {
-                    currentQuestion.answer = line.replace(/\*\*答案\*\*[:：]\s*/, '').trim();
+                // 检测选项
+                else if (line.match(/^[A-D][\.\、]\s/)) {
+                    options.push(line);
                 }
-            }
-            // 检测解析
-            else if (line.match(/\*\*解析\*\*[:：]/)) {
-                if (currentQuestion) {
-                    currentQuestion.explanation = line.replace(/\*\*解析\*\*[:：]\s*/, '').trim();
+                // 检测答案
+                else if (line.startsWith('Answer:') || line.startsWith('答案：') || line.startsWith('答案:')) {
+                    answer = line.replace(/^(Answer|答案)[：:]\s*/, '').trim();
+                }
+                // 检测解析开始
+                else if (line.startsWith('Explanation:') || line.startsWith('解析：') || line.startsWith('解析:')) {
+                    inExplanation = true;
+                    const exp = line.replace(/^(Explanation|解析)[：:]\s*/, '').trim();
+                    if (exp) explanation = exp;
+                }
+                // 继续解析内容
+                else if (inExplanation) {
+                    explanation += (explanation ? '\n' : '') + line;
+                }
+                // 继续题目内容
+                else if (!answer && !inExplanation && options.length === 0) {
+                    content += (content ? ' ' : '') + line;
                 }
             }
-            // 继续解析内容
-            else if (line && currentQuestion) {
-                if (currentQuestion.explanation && !line.match(/^##/)) {
-                    currentQuestion.explanation += ' ' + line;
-                } else if (!currentQuestion.answer && !line.match(/^[A-D][\.\、]/)) {
-                    currentQuestion.content += ' ' + line;
-                }
-            }
-        }
 
-        // 保存最后一道题
-        if (currentQuestion && currentQuestion.content) {
-            questions.push({
-                content: currentQuestion.content,
-                type: currentOptions.length > 0 ? 'CHOICE' : 'FILL',
-                options: currentOptions,
-                answer: currentQuestion.answer || '',
-                explanation: currentQuestion.explanation || '',
-            });
+            if (content) {
+                questions.push({
+                    content,
+                    type: options.length > 0 ? 'CHOICE' : 'FILL',
+                    options,
+                    answer,
+                    explanation,
+                });
+            }
         }
 
         return questions;
@@ -177,7 +166,7 @@ export default function ImportPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-4 md:p-8">
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="max-w-5xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <Link href="/">
@@ -194,211 +183,208 @@ export default function ImportPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left: Import Form */}
-                    <div className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>试卷信息</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="title">试卷标题</Label>
-                                        <Input
-                                            id="title"
-                                            placeholder="例如：2023年陕西专升本高等数学真题"
-                                            value={title}
-                                            onChange={(e) => setTitle(e.target.value)}
-                                        />
-                                    </div>
+                {/* Import Form */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>试卷信息</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="space-y-2 col-span-2">
+                                <Label htmlFor="title">试卷标题</Label>
+                                <Input
+                                    id="title"
+                                    placeholder="例如：2023年陕西专升本高等数学真题"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
+                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="year">年份</Label>
-                                        <Input
-                                            id="year"
-                                            type="number"
-                                            value={year}
-                                            onChange={(e) => setYear(parseInt(e.target.value))}
-                                        />
-                                    </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="year">年份</Label>
+                                <Input
+                                    id="year"
+                                    type="number"
+                                    value={year}
+                                    onChange={(e) => setYear(parseInt(e.target.value))}
+                                />
+                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="subject">科目</Label>
-                                        <Select value={subject} onValueChange={setSubject}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="MATH">高等数学</SelectItem>
-                                                <SelectItem value="ENGLISH">大学英语</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="subject">科目</Label>
+                                <Select value={subject} onValueChange={setSubject}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="MATH">高等数学</SelectItem>
+                                        <SelectItem value="ENGLISH">大学英语</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                    <div className="space-y-2 col-span-2">
-                                        <Label htmlFor="type">类型</Label>
-                                        <Select value={paperType} onValueChange={setPaperType}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="REAL">真题</SelectItem>
-                                                <SelectItem value="PRACTICE">练习</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            <div className="space-y-2 col-span-2">
+                                <Label htmlFor="type">类型</Label>
+                                <Select value={paperType} onValueChange={setPaperType}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="REAL">真题</SelectItem>
+                                        <SelectItem value="PRACTICE">练习</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>上传文件或粘贴内容</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="file">上传 Markdown 文件</Label>
-                                    <Input
-                                        id="file"
-                                        type="file"
-                                        accept=".md,.txt"
-                                        onChange={handleFileUpload}
-                                    />
-                                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>上传文件或粘贴内容</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="file">上传 Markdown 文件</Label>
+                            <Input
+                                id="file"
+                                type="file"
+                                accept=".md,.txt"
+                                onChange={handleFileUpload}
+                            />
+                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="markdown">或直接粘贴内容</Label>
-                                    <Textarea
-                                        id="markdown"
-                                        placeholder={`## 1. 题目内容
+                        <div className="space-y-2">
+                            <Label htmlFor="markdown">或直接粘贴内容</Label>
+                            <Textarea
+                                id="markdown"
+                                placeholder={`**题目 1**
+题目：Not only I but also Ellis and Jane _____ fond of playing basketball.
+    A. am
+    B. is
+    C. are
+    D. be
 
-A. 选项A
-B. 选项B
-C. 选项C
-D. 选项D
+    Answer: C
 
-**答案**: A
-**解析**: 解析内容`}
-                                        value={markdown}
-                                        onChange={(e) => setMarkdown(e.target.value)}
-                                        rows={12}
-                                        className="font-mono text-sm"
-                                    />
-                                </div>
+    Explanation:
+    **翻译：** 不仅我，而且埃利斯和简都喜欢打篮球。
+    **语法点：** 主谓一致的就近原则。`}
+                                value={markdown}
+                                onChange={(e) => setMarkdown(e.target.value)}
+                                rows={12}
+                                className="font-mono text-sm"
+                            />
+                        </div>
 
-                                {message && (
-                                    <div className={`p-4 rounded-lg ${message.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                                        {message}
-                                    </div>
+                        {message && (
+                            <div className={`p-4 rounded-lg ${message.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                                {message}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handlePreview}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                <Eye className="w-4 h-4 mr-2" />
+                                解析预览
+                            </Button>
+                            <Button
+                                onClick={handleImport}
+                                disabled={loading || parsedQuestions.length === 0}
+                                className="flex-1"
+                            >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {loading ? "导入中..." : "确认导入"}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Preview Section */}
+                {showPreview && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Eye className="w-5 h-5" />
+                                解析预览
+                                {parsedQuestions.length > 0 && (
+                                    <span className="text-sm font-normal text-muted-foreground">
+                                        （共 {parsedQuestions.length} 道题）
+                                    </span>
                                 )}
-
-                                <div className="flex gap-2">
-                                    <Button
-                                        onClick={handlePreview}
-                                        variant="outline"
-                                        className="flex-1"
-                                    >
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        解析预览
-                                    </Button>
-                                    <Button
-                                        onClick={handleImport}
-                                        disabled={loading || parsedQuestions.length === 0}
-                                        className="flex-1"
-                                    >
-                                        <Upload className="w-4 h-4 mr-2" />
-                                        {loading ? "导入中..." : "确认导入"}
-                                    </Button>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {parsedQuestions.length === 0 ? (
+                                <div className="text-center py-12 text-red-500">
+                                    <p>未能解析出题目，请检查格式</p>
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Format Guide */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>格式说明</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2 text-sm">
-                                <p>• 每道题以 <code className="bg-muted px-1 rounded">## 数字.</code> 开头</p>
-                                <p>• 选项以 <code className="bg-muted px-1 rounded">A.</code> <code className="bg-muted px-1 rounded">B.</code> 等开头</p>
-                                <p>• 答案用 <code className="bg-muted px-1 rounded">**答案**: A</code> 格式</p>
-                                <p>• 解析用 <code className="bg-muted px-1 rounded">**解析**: 内容</code> 格式</p>
-                                <p>• 支持 LaTeX 数学公式，用 $ 包裹</p>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Right: Preview */}
-                    <div className="space-y-6">
-                        <Card className="sticky top-4">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Eye className="w-5 h-5" />
-                                    解析预览
-                                    {parsedQuestions.length > 0 && (
-                                        <span className="text-sm font-normal text-muted-foreground">
-                                            （共 {parsedQuestions.length} 道题）
-                                        </span>
-                                    )}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {!showPreview ? (
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <Eye className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                        <p>点击"解析预览"查看解析结果</p>
-                                    </div>
-                                ) : parsedQuestions.length === 0 ? (
-                                    <div className="text-center py-12 text-red-500">
-                                        <p>未能解析出题目，请检查格式</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6 max-h-[600px] overflow-y-auto">
-                                        {parsedQuestions.map((q, index) => (
-                                            <div key={index} className="p-4 border rounded-lg bg-white">
-                                                <div className="flex items-start gap-2 mb-2">
-                                                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
-                                                    <div className="flex-1">
-                                                        <div className="font-semibold mb-2">题目 {index + 1}</div>
-                                                        <div className="text-sm mb-2">
-                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                                {q.content}
-                                                            </ReactMarkdown>
+                            ) : (
+                                <div className="space-y-6">
+                                    {parsedQuestions.map((q, index) => (
+                                        <div key={index} className="p-4 border rounded-lg bg-white">
+                                            <div className="flex items-start gap-2">
+                                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
+                                                <div className="flex-1">
+                                                    <div className="font-semibold mb-2">题目 {index + 1}</div>
+                                                    <div className="text-sm mb-2">
+                                                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                            {q.content}
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                    {q.options.length > 0 && (
+                                                        <div className="space-y-1 mb-2 ml-4">
+                                                            {q.options.map((opt, i) => (
+                                                                <div key={i} className="text-sm text-muted-foreground">
+                                                                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                                        {opt}
+                                                                    </ReactMarkdown>
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                        {q.options.length > 0 && (
-                                                            <div className="space-y-1 mb-2">
-                                                                {q.options.map((opt, i) => (
-                                                                    <div key={i} className="text-sm text-muted-foreground">
-                                                                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                                            {opt}
-                                                                        </ReactMarkdown>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                        <div className="text-sm">
-                                                            <span className="font-semibold text-green-600">答案: </span>
-                                                            {q.answer || '未识别'}
-                                                        </div>
-                                                        {q.explanation && (
-                                                            <div className="text-sm mt-2 p-2 bg-blue-50 rounded">
-                                                                <span className="font-semibold">解析: </span>
+                                                    )}
+                                                    <div className="text-sm mb-2">
+                                                        <span className="font-semibold text-green-600">答案: </span>
+                                                        {q.answer || '未识别'}
+                                                    </div>
+                                                    {q.explanation && (
+                                                        <div className="text-sm p-3 bg-blue-50 rounded border border-blue-200">
+                                                            <div className="font-semibold mb-1">解析:</div>
+                                                            <div className="prose prose-sm max-w-none">
                                                                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                                                                     {q.explanation}
                                                                 </ReactMarkdown>
                                                             </div>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Format Guide */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>格式说明</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                        <p>• 每道题以 <code className="bg-muted px-1 rounded">**题目 数字**</code> 开头</p>
+                        <p>• 题目内容以 <code className="bg-muted px-1 rounded">题目：</code> 开头</p>
+                        <p>• 选项以 <code className="bg-muted px-1 rounded">A.</code> <code className="bg-muted px-1 rounded">B.</code> 等开头</p>
+                        <p>• 答案用 <code className="bg-muted px-1 rounded">Answer: A</code> 格式</p>
+                        <p>• 解析用 <code className="bg-muted px-1 rounded">Explanation:</code> 开头</p>
+                        <p>• 支持 LaTeX 数学公式，用 $ 包裹</p>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
