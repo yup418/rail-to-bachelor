@@ -3,7 +3,7 @@
 import { GamificationHeader } from "@/features/gamification/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Activity, AlertCircle, FileUp, Sparkles, BarChart3, Clock, Menu, X, Calculator, BookOpen, GraduationCap, BookMarked, ChevronRight, Target, CheckCircle } from "lucide-react";
+import { Activity, AlertCircle, FileUp, Sparkles, BarChart3, Clock, Menu, X, Calculator, BookOpen, GraduationCap, BookMarked, ChevronRight, Target, CheckCircle, User } from "lucide-react";
 import { AbilityRadar } from "@/features/dashboard/charts/AbilityRadar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -108,6 +108,15 @@ export default function Home() {
               <div className="flex-1">
                 <div className="text-sm font-medium text-neutral-900 group-hover:text-green-600 transition-colors">答题记录</div>
                 <div className="text-xs text-neutral-500">查看历史</div>
+              </div>
+            </div>
+          </a>
+          <a href="/profile" onClick={(e) => { if (checkLogin(e, '/profile')) setMobileMenuOpen(false); }} className="block">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer group">
+              <User className="w-4 h-4 text-purple-500" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-neutral-900 group-hover:text-purple-600 transition-colors">个人中心</div>
+                <div className="text-xs text-neutral-500">账户设置</div>
               </div>
             </div>
           </a>
