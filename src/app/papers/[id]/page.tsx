@@ -454,7 +454,7 @@ export default function PaperExamPage() {
 
                     {/* 底部按钮 */}
                     <div className="flex justify-center gap-4 pb-8">
-                        <Link href="/papers">
+                        <Link href={`/papers?subject=${paper.subject}&type=${paper.paperType}`}>
                             <Button variant="outline" size="lg">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 返回试卷库
@@ -476,7 +476,7 @@ export default function PaperExamPage() {
             <div className="bg-white border-b shadow-sm sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Link href="/papers">
+                        <Link href={`/papers?subject=${paper.subject}&type=${paper.paperType}`}>
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 退出
