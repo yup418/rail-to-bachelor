@@ -16,6 +16,7 @@ interface User {
     level: number;
     xp: number;
     streak: number;
+    avatar?: string | null;
 }
 
 interface TimeRemaining {
@@ -117,7 +118,7 @@ export function GamificationHeader() {
             <div className="relative flex items-center gap-4 sm:gap-6">
                 <Link href="/profile" className="relative group cursor-pointer">
                     <Avatar className="relative h-9 w-9 sm:h-10 sm:w-10 border border-cyan-500/30 hover:border-cyan-500 transition-colors">
-                        <AvatarImage src="/avatar-placeholder.png" />
+                        {user.avatar && <AvatarImage src={user.avatar} alt={user.username} />}
                         <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-500 text-white font-semibold text-sm">
                             {user.username.charAt(0).toUpperCase()}
                         </AvatarFallback>
