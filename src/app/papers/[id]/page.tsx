@@ -104,7 +104,43 @@ export default function PaperExamPage() {
         }
     };
 
-    // 保存答题进度
+    // 保存答题进度并退出
+    const saveProgressAndExit = async () => {
+        if (!paper || isSubmitted) return;
+
+        if (!confirm('确定要保存当前进度并退出吗？下次可以继续答题。')) {
+            return;
+        }
+
+        try {
+            const answersObj: Record<string, string> = {};
+            userAnswers.forEach((value, key) => {
+                answersObj[key] = value;
+            });
+
+            const response = await fetch(`/api/papers/${params.id}/progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentAnswers: answersObj,
+                    currentIndex,
+                    timeSpent: elapsedTime
+                })
+            });
+
+            if (response.ok) {
+                alert('✅ 进度已保存！');
+                router.push(`/papers?subject=${paper.subject}&type=${paper.paperType}`);
+            } else {
+                alert('❌ 保存失败，请重试');
+            }
+        } catch (error) {
+            console.error('Save progress error:', error);
+            alert('❌ 保存失败，请检查网络连接');
+        }
+    };
+
+    // 自动保存（后台静默保存）
     const saveProgress = async () => {
         if (!paper || isSubmitted) return;
 
@@ -623,13 +659,13 @@ export default function PaperExamPage() {
                             {userAnswers.size} / {paper.questions.length} 已答
                         </Badge>
                         <Button
-                            onClick={saveProgress}
+                            onClick={saveProgressAndExit}
                             variant="outline"
                             size="sm"
                             className="gap-2"
                         >
                             <Save className="w-4 h-4" />
-                            保存进度
+                            保存并退出
                         </Button>
                         <Button
                             onClick={handleSubmit}
