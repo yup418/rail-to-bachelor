@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, AlertCircle, Calendar, Filter } from "lucide-react";
+import { Loader2, AlertCircle, Calendar, Filter, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -71,10 +71,18 @@ export default function MistakesPage() {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent flex items-center gap-2">
-                            <AlertCircle className="w-8 h-8 text-red-500" />
-                            错题集锦
-                        </h1>
+                        <div className="flex items-center gap-4">
+                            <Link href="/">
+                                <Button variant="ghost" size="sm">
+                                    <ArrowLeft className="w-4 h-4 mr-2" />
+                                    返回主页
+                                </Button>
+                            </Link>
+                            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent flex items-center gap-2">
+                                <AlertCircle className="w-8 h-8 text-red-500" />
+                                错题集锦
+                            </h1>
+                        </div>
                         <p className="text-muted-foreground">复习是最好的老师。消灭这些红点, 你的分数就会上涨。</p>
                     </div>
 
