@@ -115,8 +115,8 @@ export function GamificationHeader() {
     return (
         <div className="relative flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 border-b border-neutral-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
             <div className="relative flex items-center gap-4 sm:gap-6">
-                <div className="relative group">
-                    <Avatar className="relative h-9 w-9 sm:h-10 sm:w-10 border border-cyan-500/30">
+                <Link href="/profile" className="relative group cursor-pointer">
+                    <Avatar className="relative h-9 w-9 sm:h-10 sm:w-10 border border-cyan-500/30 hover:border-cyan-500 transition-colors">
                         <AvatarImage src="/avatar-placeholder.png" />
                         <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-500 text-white font-semibold text-sm">
                             {user.username.charAt(0).toUpperCase()}
@@ -125,7 +125,11 @@ export function GamificationHeader() {
                     <div className="absolute -bottom-0.5 -right-0.5 bg-gradient-to-br from-amber-400 to-orange-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white border border-white shadow-sm">
                         Lv.{user.level}
                     </div>
-                </div>
+                    {/* 悬停提示 */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                        个人中心
+                    </div>
+                </Link>
 
                 <div className="hidden sm:block">
                     <h2 className="font-semibold text-sm text-neutral-900 mb-1">{getLevelName(user.level)}</h2>
