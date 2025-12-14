@@ -147,11 +147,18 @@ export default function RecordsPage() {
                                                     </div>
                                                 </div>
 
-                                                <Link href={`/papers/${record.paper.id}`}>
-                                                    <Button variant="outline" size="sm">
-                                                        再做一次
-                                                    </Button>
-                                                </Link>
+                                                <div className="flex gap-2">
+                                                    <Link href={`/records/${record.id}`}>
+                                                        <Button variant="default" size="sm">
+                                                            查看详情
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/papers/${record.paper.id}`}>
+                                                        <Button variant="outline" size="sm">
+                                                            再做一次
+                                                        </Button>
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
