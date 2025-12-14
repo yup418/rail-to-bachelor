@@ -2,6 +2,33 @@ import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
 
+// 获取单个题目
+export async function GET(
+    req: Request,
+    context: { params: Promise<{ id: string }> }
+) {
+    try {
+        const params = await context.params;
+
+        const question = await prisma.question.findUnique({
+            where: { id: params.id },
+            include: {
+                tags: true
+            }
+        });
+
+        if (!question) {
+            return NextResponse.json({ error: "题目未找到" }, { status: 404 });
+        }
+
+        return NextResponse.json(question);
+    } catch (e) {
+        console.error("Error fetching question:", e);
+        return NextResponse.json({ error: "获取失败" }, { status: 500 });
+    }
+}
+
+
 // 更新题目
 export async function PUT(
     req: Request,

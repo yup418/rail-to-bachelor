@@ -12,6 +12,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import Link from "next/link";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface Question {
     id: string;
@@ -103,7 +105,7 @@ export default function MistakesPage() {
                 {/* Content */}
                 {loading ? (
                     <div className="flex justify-center py-20">
-                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                        <LoadingSpinner size="lg" text="加载错题中..." />
                     </div>
                 ) : mistakes.length === 0 ? (
                     <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
@@ -175,9 +177,14 @@ function MistakeCard({ question }: { question: Question }) {
                     </div>
                 )}
 
-                <div className="pt-2 border-t flex justify-end">
+                <div className="pt-2 border-t flex justify-between items-center">
+                    <Link href={`/mistakes/${question.id}`}>
+                        <Button variant="default" size="sm">
+                            查看详情
+                        </Button>
+                    </Link>
                     <Button variant="ghost" size="sm" onClick={() => setShowAnswer(!showAnswer)}>
-                        {showAnswer ? "隐藏解析" : "查看解析"}
+                        {showAnswer ? "隐藏解析" : "快速查看"}
                     </Button>
                 </div>
 
