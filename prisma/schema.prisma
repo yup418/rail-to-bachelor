@@ -49,13 +49,16 @@ model Question {
   id             String   @id @default(uuid())
   content        String   // Markdown content, LaTeX support
   
+  // For Reading Comprehension
+  passage        String?  // Article/passage for reading comprehension questions
+  
   // For Choice Questions
   options        String?  // JSON encoded array of strings e.g. ["A. 1", "B. 0"]
   
   answer         String   // Correct answer text
   explanation    String   // Detailed solution in Markdown
   
-  type           String   // CHOICE, FILL, CALCULATION, PROOF
+  type           String   // CHOICE, FILL, CALCULATION, PROOF, READING
   difficulty     Int      @default(3) // 1-5 stars
   source         String?  // e.g. "2024真题"
   

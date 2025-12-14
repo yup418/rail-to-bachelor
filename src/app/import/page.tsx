@@ -21,6 +21,7 @@ interface ParsedQuestion {
     options: string[];
     answer: string;
     explanation: string;
+    passage?: string;  // 阅读理解文章
 }
 
 // 预设标签
@@ -103,6 +104,82 @@ export default function ImportPage() {
     // 解析 Markdown
     const parseMarkdown = (md: string): ParsedQuestion[] => {
         const questions: ParsedQuestion[] = [];
+
+        // 检测是否包含阅读理解
+        const hasPassage = md.includes('**文章**') || md.includes('**Passage**') || md.includes('**阅读材料**');
+
+        if (hasPassage) {
+            // 解析阅读理解格式
+            return parseReadingComprehension(md);
+        } else {
+            // 解析普通题目格式
+            return parseRegularQuestions(md);
+        }
+    };
+
+    // 解析阅读理解
+    const parseReadingComprehension = (md: string): ParsedQuestion[] => {
+        const questions: ParsedQuestion[] = [];
+
+        // 提取文章内容
+        const passageMatch = md.match(/\*\*(文章|Passage|阅读材料)\*\*\s*\n([\s\S]*?)(?=\n\*\*题目|$)/);
+        const passage = passageMatch ? passageMatch[2].trim() : '';
+
+        // 提取题目部分
+        const questionsSection = md.split(/\*\*(文章|Passage|阅读材料)\*\*/)[2] || md;
+        const sections = questionsSection.split(/\*\*题目\s+\d+\*\*/);
+
+        for (let i = 1; i < sections.length; i++) {
+            const section = sections[i].trim();
+            const lines = section.split('\n').map(l => l.trim()).filter(l => l);
+
+            let content = '';
+            let options: string[] = [];
+            let answer = '';
+            let explanation = '';
+            let inExplanation = false;
+
+            for (const line of lines) {
+                if (line.startsWith('题目：') || line.startsWith('题目:') || line.startsWith('Question:')) {
+                    content = line.replace(/^(题目|Question)[：:]?\s*/, '');
+                }
+                else if (line.match(/^[A-D][\\.、]\s/)) {
+                    options.push(line);
+                }
+                else if (line.startsWith('Answer:') || line.startsWith('答案：') || line.startsWith('答案:')) {
+                    answer = line.replace(/^(Answer|答案)[：:]?\s*/, '').trim();
+                }
+                else if (line.startsWith('Explanation:') || line.startsWith('解析：') || line.startsWith('解析:')) {
+                    inExplanation = true;
+                    const exp = line.replace(/^(Explanation|解析)[：:]?\s*/, '').trim();
+                    if (exp) explanation = exp;
+                }
+                else if (inExplanation) {
+                    explanation += (explanation ? '\n' : '') + line;
+                }
+                else if (!answer && !inExplanation && options.length === 0) {
+                    content += (content ? ' ' : '') + line;
+                }
+            }
+
+            if (content) {
+                questions.push({
+                    content,
+                    type: 'READING',
+                    options,
+                    answer,
+                    explanation,
+                    passage,
+                });
+            }
+        }
+
+        return questions;
+    };
+
+    // 解析普通题目
+    const parseRegularQuestions = (md: string): ParsedQuestion[] => {
+        const questions: ParsedQuestion[] = [];
         const sections = md.split(/\*\*题目\s+\d+\*\*/);
 
         for (let i = 1; i < sections.length; i++) {
@@ -116,29 +193,23 @@ export default function ImportPage() {
             let inExplanation = false;
 
             for (const line of lines) {
-                // 检测题目内容
                 if (line.startsWith('题目：') || line.startsWith('题目:')) {
-                    content = line.replace(/^题目[：:]\s*/, '');
+                    content = line.replace(/^题目[：:]?\s*/, '');
                 }
-                // 检测选项
-                else if (line.match(/^[A-D][\.\、]\s/)) {
+                else if (line.match(/^[A-D][\\.、]\s/)) {
                     options.push(line);
                 }
-                // 检测答案
                 else if (line.startsWith('Answer:') || line.startsWith('答案：') || line.startsWith('答案:')) {
-                    answer = line.replace(/^(Answer|答案)[：:]\s*/, '').trim();
+                    answer = line.replace(/^(Answer|答案)[：:]?\s*/, '').trim();
                 }
-                // 检测解析开始
                 else if (line.startsWith('Explanation:') || line.startsWith('解析：') || line.startsWith('解析:')) {
                     inExplanation = true;
-                    const exp = line.replace(/^(Explanation|解析)[：:]\s*/, '').trim();
+                    const exp = line.replace(/^(Explanation|解析)[：:]?\s*/, '').trim();
                     if (exp) explanation = exp;
                 }
-                // 继续解析内容
                 else if (inExplanation) {
                     explanation += (explanation ? '\n' : '') + line;
                 }
-                // 继续题目内容
                 else if (!answer && !inExplanation && options.length === 0) {
                     content += (content ? ' ' : '') + line;
                 }
@@ -441,6 +512,21 @@ export default function ImportPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-6">
+                                    {/* 如果是阅读理解，先显示文章 */}
+                                    {parsedQuestions[0]?.passage && (
+                                        <div className="p-6 border-2 border-blue-200 rounded-lg bg-blue-50">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <FileText className="w-5 h-5 text-blue-600" />
+                                                <div className="font-bold text-lg text-blue-900">阅读材料</div>
+                                            </div>
+                                            <div className="prose prose-sm max-w-none">
+                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                    {parsedQuestions[0].passage}
+                                                </ReactMarkdown>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {parsedQuestions.map((q, index) => (
                                         <div key={index} className="p-4 border rounded-lg bg-white">
                                             <div className="flex items-start gap-2">
@@ -507,13 +593,26 @@ export default function ImportPage() {
                     <CardHeader>
                         <CardTitle>格式说明</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm">
-                        <p>• 每道题以 <code className="bg-muted px-1 rounded">**题目 数字**</code> 开头</p>
-                        <p>• 题目内容以 <code className="bg-muted px-1 rounded">题目：</code> 开头</p>
-                        <p>• 选项以 <code className="bg-muted px-1 rounded">A.</code> <code className="bg-muted px-1 rounded">B.</code> 等开头</p>
-                        <p>• 答案用 <code className="bg-muted px-1 rounded">Answer: A</code> 格式</p>
-                        <p>• 解析用 <code className="bg-muted px-1 rounded">Explanation:</code> 开头</p>
-                        <p>• 支持 LaTeX 数学公式，用 $ 包裹</p>
+                    <CardContent className="space-y-4 text-sm">
+                        <div>
+                            <div className="font-semibold mb-2">普通题目格式：</div>
+                            <div className="space-y-1 ml-4">
+                                <p>• 每道题以 <code className="bg-muted px-1 rounded">**题目 数字**</code> 开头</p>
+                                <p>• 题目内容以 <code className="bg-muted px-1 rounded">题目：</code> 开头</p>
+                                <p>• 选项以 <code className="bg-muted px-1 rounded">A.</code> <code className="bg-muted px-1 rounded">B.</code> 等开头</p>
+                                <p>• 答案用 <code className="bg-muted px-1 rounded">Answer: A</code> 格式</p>
+                                <p>• 解析用 <code className="bg-muted px-1 rounded">Explanation:</code> 开头</p>
+                            </div>
+                        </div>
+                        <div className="border-t pt-4">
+                            <div className="font-semibold mb-2">阅读理解格式：</div>
+                            <div className="space-y-1 ml-4">
+                                <p>• 文章以 <code className="bg-muted px-1 rounded">**文章**</code> 或 <code className="bg-muted px-1 rounded">**Passage**</code> 开头</p>
+                                <p>• 文章后跟多道题目，格式同普通题目</p>
+                                <p>• 所有题目会自动关联到同一篇文章</p>
+                            </div>
+                        </div>
+                        <p className="border-t pt-4">• 支持 LaTeX 数学公式，用 $ 包裹</p>
                     </CardContent>
                 </Card>
             </div>

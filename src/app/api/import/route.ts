@@ -107,6 +107,7 @@ export async function POST(req: Request) {
                     },
                     content: q.content,
                     type: q.type,
+                    passage: q.passage || null,  // 添加 passage 字段
                     options: q.options.length > 0 ? JSON.stringify(q.options) : null,
                     answer: q.answer,
                     explanation: q.explanation || "",
