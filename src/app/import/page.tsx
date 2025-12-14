@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Upload, FileText, Eye, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Upload, FileText, Eye, CheckCircle, X, Plus } from "lucide-react";
 import Link from "next/link";
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -22,6 +23,14 @@ interface ParsedQuestion {
     explanation: string;
 }
 
+// 预设标签
+const PRESET_TAGS = [
+    "选择题", "填空题", "计算题", "证明题",
+    "极限", "导数", "积分", "微分方程",
+    "语法", "词汇", "阅读理解", "完形填空",
+    "基础题", "中等题", "难题", "易错题"
+];
+
 export default function ImportPage() {
     const [markdown, setMarkdown] = useState("");
     const [title, setTitle] = useState("");
@@ -32,6 +41,32 @@ export default function ImportPage() {
     const [message, setMessage] = useState("");
     const [parsedQuestions, setParsedQuestions] = useState<ParsedQuestion[]>([]);
     const [showPreview, setShowPreview] = useState(false);
+
+    // 标签相关状态
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [customTag, setCustomTag] = useState("");
+    const [showCustomInput, setShowCustomInput] = useState(false);
+
+    // 添加标签
+    const handleAddTag = (tag: string) => {
+        if (tag && !selectedTags.includes(tag)) {
+            setSelectedTags([...selectedTags, tag]);
+        }
+    };
+
+    // 删除标签
+    const handleRemoveTag = (tag: string) => {
+        setSelectedTags(selectedTags.filter(t => t !== tag));
+    };
+
+    // 添加自定义标签
+    const handleAddCustomTag = () => {
+        if (customTag.trim() && !selectedTags.includes(customTag.trim())) {
+            setSelectedTags([...selectedTags, customTag.trim()]);
+            setCustomTag("");
+            setShowCustomInput(false);
+        }
+    };
 
     // 处理文件上传
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,6 +178,7 @@ export default function ImportPage() {
                     year,
                     subject,
                     paperType,
+                    tags: selectedTags,
                 }),
             });
 
@@ -235,6 +271,83 @@ export default function ImportPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 标签选择 */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>题目标签</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* 已选标签 */}
+                        {selectedTags.length > 0 && (
+                            <div className="space-y-2">
+                                <Label>已选标签</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedTags.map((tag) => (
+                                        <Badge key={tag} variant="secondary" className="px-3 py-1">
+                                            {tag}
+                                            <X
+                                                className="w-3 h-3 ml-2 cursor-pointer hover:text-red-500"
+                                                onClick={() => handleRemoveTag(tag)}
+                                            />
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 预设标签 */}
+                        <div className="space-y-2">
+                            <Label>选择预设标签</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {PRESET_TAGS.map((tag) => (
+                                    <Badge
+                                        key={tag}
+                                        variant={selectedTags.includes(tag) ? "default" : "outline"}
+                                        className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
+                                        onClick={() => handleAddTag(tag)}
+                                    >
+                                        {tag}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 自定义标签 */}
+                        <div className="space-y-2">
+                            <Label>自定义标签</Label>
+                            {!showCustomInput ? (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowCustomInput(true)}
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    添加自定义标签
+                                </Button>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="输入自定义标签"
+                                        value={customTag}
+                                        onChange={(e) => setCustomTag(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && handleAddCustomTag()}
+                                    />
+                                    <Button onClick={handleAddCustomTag}>添加</Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setShowCustomInput(false);
+                                            setCustomTag("");
+                                        }}
+                                    >
+                                        取消
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -344,6 +457,15 @@ export default function ImportPage() {
                                                                         {opt}
                                                                     </ReactMarkdown>
                                                                 </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {selectedTags.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1 mb-2">
+                                                            {selectedTags.map((tag) => (
+                                                                <Badge key={tag} variant="secondary" className="text-xs">
+                                                                    {tag}
+                                                                </Badge>
                                                             ))}
                                                         </div>
                                                     )}
