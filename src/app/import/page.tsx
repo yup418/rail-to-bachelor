@@ -353,9 +353,15 @@ export default function ImportPage() {
                                                     </div>
                                                     {q.explanation && (
                                                         <div className="text-sm p-3 bg-blue-50 rounded border border-blue-200">
-                                                            <div className="font-semibold mb-1">解析:</div>
-                                                            <div className="prose prose-sm max-w-none">
-                                                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                            <div className="font-semibold mb-2">解析:</div>
+                                                            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                                                                <ReactMarkdown
+                                                                    remarkPlugins={[remarkMath]}
+                                                                    rehypePlugins={[rehypeKatex]}
+                                                                    components={{
+                                                                        p: ({ node, ...props }) => <p className="mb-2" {...props} />
+                                                                    }}
+                                                                >
                                                                     {q.explanation}
                                                                 </ReactMarkdown>
                                                             </div>
