@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, Calculator, FileText, ScrollText, Filter, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { LoadingSpinner, SkeletonCard } from "@/components/LoadingSpinner";
 
 interface Tag {
     id: string;
@@ -144,7 +145,13 @@ function PapersContent() {
                     )}
                 </div>
 
-                {loading ? <div>Loading papers...</div> : (
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <SkeletonCard key={i} />
+                        ))}
+                    </div>
+                ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredPapers.length === 0 ? (
                             <div className="col-span-full text-center py-12 text-muted-foreground">
@@ -219,7 +226,11 @@ function PapersContent() {
 
 export default function PapersPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">加载中...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <LoadingSpinner size="lg" text="加载页面中..." />
+            </div>
+        }>
             <PapersContent />
         </Suspense>
     );

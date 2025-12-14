@@ -10,6 +10,7 @@ import Link from "next/link";
 import { MathText } from "@/components/MathText";
 import { motion, AnimatePresence } from "framer-motion";
 import { QuestionEditDialog } from "@/components/QuestionEditDialog";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface Tag {
     id: string;
@@ -210,7 +211,11 @@ export default function PaperExamPage() {
         };
     };
 
-    if (loading) return <div className="p-8 text-center">加载中...</div>;
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <LoadingSpinner size="lg" text="加载试卷中..." />
+        </div>
+    );
     if (!paper) return <div className="p-8 text-center">试卷未找到</div>;
 
     const currentQuestion = paper.questions[currentIndex];
