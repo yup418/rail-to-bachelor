@@ -5,7 +5,7 @@ import { getUserSession } from "@/lib/auth";
 // 获取答题进度
 export async function GET(
     req: Request,
-    { params }: { params: Promise<{ paperId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const userId = await getUserSession();
@@ -13,13 +13,13 @@ export async function GET(
             return NextResponse.json({ error: "未登录" }, { status: 401 });
         }
 
-        const { paperId } = await params;
+        const { id } = await params;
 
         const progress = await prisma.examProgress.findUnique({
             where: {
                 userId_paperId: {
                     userId,
-                    paperId
+                    paperId: id
                 }
             }
         });
@@ -34,7 +34,7 @@ export async function GET(
 // 保存答题进度
 export async function POST(
     req: Request,
-    { params }: { params: Promise<{ paperId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const userId = await getUserSession();
@@ -42,7 +42,7 @@ export async function POST(
             return NextResponse.json({ error: "未登录" }, { status: 401 });
         }
 
-        const { paperId } = await params;
+        const { id } = await params;
         const body = await req.json();
         const { currentAnswers, currentIndex, timeSpent } = body;
 
@@ -50,7 +50,7 @@ export async function POST(
             where: {
                 userId_paperId: {
                     userId,
-                    paperId
+                    paperId: id
                 }
             },
             update: {
@@ -60,7 +60,7 @@ export async function POST(
             },
             create: {
                 userId,
-                paperId,
+                paperId: id,
                 currentAnswers: JSON.stringify(currentAnswers),
                 currentIndex,
                 timeSpent
@@ -77,7 +77,7 @@ export async function POST(
 // 删除答题进度（完成答题后）
 export async function DELETE(
     req: Request,
-    { params }: { params: Promise<{ paperId: string }> }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const userId = await getUserSession();
@@ -85,12 +85,12 @@ export async function DELETE(
             return NextResponse.json({ error: "未登录" }, { status: 401 });
         }
 
-        const { paperId } = await params;
+        const { id } = await params;
 
         await prisma.examProgress.deleteMany({
             where: {
                 userId,
-                paperId
+                paperId: id
             }
         });
 
