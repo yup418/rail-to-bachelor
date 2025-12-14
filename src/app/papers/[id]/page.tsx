@@ -11,6 +11,11 @@ import { MathText } from "@/components/MathText";
 import { motion, AnimatePresence } from "framer-motion";
 import { QuestionEditDialog } from "@/components/QuestionEditDialog";
 
+interface Tag {
+    id: string;
+    name: string;
+}
+
 interface Question {
     id: string;
     content: string;
@@ -19,6 +24,7 @@ interface Question {
     answer: string;
     explanation: string;
     difficulty: number;
+    tags?: Tag[];
 }
 
 interface ExamPaperDetail {
@@ -26,6 +32,7 @@ interface ExamPaperDetail {
     title: string;
     year: number;
     subject: string;
+    paperType: string;
     questions: Question[];
 }
 
@@ -219,7 +226,7 @@ export default function PaperExamPage() {
                     {/* 头部 */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Link href="/papers">
+                            <Link href={`/papers?subject=${paper.subject}&type=${paper.paperType}`}>
                                 <Button variant="ghost" size="sm">
                                     <ArrowLeft className="w-4 h-4 mr-2" />
                                     返回试卷库
@@ -578,7 +585,18 @@ export default function PaperExamPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <Badge>{currentQuestion.type === 'CHOICE' ? '选择题' : '其他'}</Badge>
+                                        <div className="flex items-center gap-2">
+                                            <Badge>{currentQuestion.type === 'CHOICE' ? '选择题' : '其他'}</Badge>
+                                            {currentQuestion.tags && currentQuestion.tags.length > 0 && (
+                                                <>
+                                                    {currentQuestion.tags.map((tag) => (
+                                                        <Badge key={tag.id} variant="secondary" className="text-xs">
+                                                            {tag.name}
+                                                        </Badge>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* 题目内容 */}
