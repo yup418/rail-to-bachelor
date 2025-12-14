@@ -37,13 +37,13 @@ export async function PUT(req: Request) {
             data: {
                 username: username.trim(),
                 email: email?.trim() || null,
-                avatar: avatar?.trim() || null,
+                avatarUrl: avatar?.trim() || null,
             },
             select: {
                 id: true,
                 username: true,
                 email: true,
-                avatar: true,
+                avatarUrl: true,
                 role: true,
                 createdAt: true,
             }

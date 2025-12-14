@@ -16,7 +16,7 @@ interface UserProfile {
     username: string;
     email: string | null;
     role: string;
-    avatar: string | null;
+    avatarUrl: string | null;
     createdAt: string;
 }
 
@@ -50,7 +50,7 @@ export default function ProfilePage() {
                 setUser(data.user);
                 setUsername(data.user.username);
                 setEmail(data.user.email || "");
-                setAvatar(data.user.avatar || "");
+                setAvatar(data.user.avatarUrl || "");
             } else {
                 router.push('/login');
             }
