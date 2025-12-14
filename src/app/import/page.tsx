@@ -287,16 +287,16 @@ export default function ImportPage() {
                                 <Label>已选标签</Label>
                                 <div className="flex flex-wrap gap-2">
                                     {selectedTags.map((tag) => (
-                                        <Badge key={tag} variant="secondary" className="px-3 py-1 flex items-center gap-2">
+                                        <div key={tag} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
                                             <span>{tag}</span>
-                                            <X
-                                                className="w-3 h-3 cursor-pointer hover:text-red-500"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRemoveTag(tag);
-                                                }}
-                                            />
-                                        </Badge>
+                                            <button
+                                                type="button"
+                                                className="ml-1 hover:text-red-500 focus:outline-none"
+                                                onClick={() => handleRemoveTag(tag)}
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
