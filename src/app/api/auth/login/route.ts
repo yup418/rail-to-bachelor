@@ -55,8 +55,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // 使用 bcrypt 验证密码
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // 临时修改：直接比较明文密码 (因为数据库里存的是明文)
+    // const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = password === user.password;
 
     if (!isPasswordValid) {
       console.log('Password verification failed');
