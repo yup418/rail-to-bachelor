@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: rail-to-bachelor-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://postgres:admin123@db:5432/rail_to_bachelor"
+      NODE_ENV: "production"
+    depends_on:
+      - db
+
+  db:
+    container_name: rail-to-bachelor-db
+    image: postgres:15-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "admin123"
+      POSTGRES_DB: "rail_to_bachelor"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
