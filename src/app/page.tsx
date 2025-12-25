@@ -8,6 +8,7 @@ import { AbilityRadar } from "@/features/dashboard/charts/AbilityRadar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 export default function Home() {
   const [stats, setStats] = useState({ accuracy: 0, todayCount: 0, weakestTag: "暂无数据" });
@@ -47,9 +48,13 @@ export default function Home() {
   const checkLogin = (e: React.MouseEvent, href: string) => {
     if (!isLoggedIn) {
       e.preventDefault();
-      if (confirm('请先登录才能使用此功能！\n\n点击"确定"前往登录页面')) {
+      toast.error('请先登录才能使用此功能！', {
+        duration: 2000,
+        description: '正在跳转到登录页面...',
+      });
+      setTimeout(() => {
         window.location.href = '/login';
-      }
+      }, 1000);
       return false;
     }
     return true;

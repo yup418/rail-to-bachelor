@@ -3,13 +3,31 @@ import { prisma } from "@/lib/db/prisma";
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/auth";
 
-// 解析 Markdown
+// 解析 Markdown (同步前端的优化逻辑)
 function parseMarkdown(md: string): any[] {
     const questions: any[] = [];
-    const sections = md.split(/\*\*题目\s+\d+\*\*/);
 
-    for (let i = 1; i < sections.length; i++) {
+    // 1. 支持 "**题目 1**" 和 "题目 1" (无星号)
+    let sections = md.split(/(?:^|\n)\s*(?:\*\*|##)?\s*题目\s*\d+\s*(?:\*\*|##)?\s*(?:\n|$)/);
+
+    let startIdx = 1;
+    let globalPassage = '';
+
+    // 检查第一部分是否为阅读理解的文章
+    if (sections.length > 1 && sections[0].trim()) {
+        const potentialPassage = sections[0].trim();
+        if (potentialPassage.length > 50 || /Passage|Reading|Text|文章/i.test(potentialPassage)) {
+            globalPassage = potentialPassage;
+        }
+        startIdx = 1;
+    } else if (sections.length === 1 && sections[0].trim()) {
+        startIdx = 0;
+    }
+
+    for (let i = startIdx; i < sections.length; i++) {
         const section = sections[i].trim();
+        if (!section) continue;
+
         const lines = section.split('\n').map(l => l.trim()).filter(l => l);
 
         let content = '';
@@ -19,25 +37,28 @@ function parseMarkdown(md: string): any[] {
         let inExplanation = false;
 
         for (const line of lines) {
-            if (line.startsWith('题目：') || line.startsWith('题目:')) {
-                content = line.replace(/^题目[：:]\s*/, '');
+            if (line.match(/^(题目|Question)[：:]/i)) {
+                content = line.replace(/^(题目|Question)[：:]\s*/i, '');
             }
-            else if (line.match(/^[A-D][\.\、]\s/)) {
+            else if (line.match(/^[A-D][\\.、]/)) {
                 options.push(line);
             }
-            else if (line.startsWith('Answer:') || line.startsWith('答案：') || line.startsWith('答案:')) {
-                answer = line.replace(/^(Answer|答案)[：:]\s*/, '').trim();
+            else if (line.match(/^(Answer|答案)[：:]/i)) {
+                answer = line.replace(/^(Answer|答案)[：:]\s*/i, '').trim();
             }
-            else if (line.startsWith('Explanation:') || line.startsWith('解析：') || line.startsWith('解析:')) {
+            else if (line.match(/^(Explanation|解析)[：:]/i)) {
                 inExplanation = true;
-                const exp = line.replace(/^(Explanation|解析)[：:]\s*/, '').trim();
+                const exp = line.replace(/^(Explanation|解析)[：:]\s*/i, '').trim();
                 if (exp) explanation = exp;
             }
             else if (inExplanation) {
                 explanation += (explanation ? '\n' : '') + line;
             }
             else if (!answer && !inExplanation && options.length === 0) {
-                content += (content ? ' ' : '') + line;
+                // 忽略像 "## Part I" 这样的标题行
+                if (!line.match(/^\s*(##|\*\*)\s*Part/i)) {
+                    content += (content ? '\n' : '') + line;
+                }
             }
         }
 
@@ -48,6 +69,7 @@ function parseMarkdown(md: string): any[] {
                 options,
                 answer,
                 explanation,
+                passage: globalPassage || undefined,
             });
         }
     }
@@ -63,14 +85,23 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { markdown, title, year, subject, paperType, tags = [] } = body;
+        const { markdown, title, year, subject, paperType, tags = [], questions: preParsedQuestions } = body;
 
-        if (!markdown || !title) {
-            return NextResponse.json({ error: "请填写试卷标题和题目内容" }, { status: 400 });
+        if (!title) {
+            return NextResponse.json({ error: "请填写试卷标题" }, { status: 400 });
         }
 
-        // 解析 Markdown
-        const questions = parseMarkdown(markdown);
+        let questions = [];
+
+        // 优先使用前端解析好的题目
+        if (preParsedQuestions && Array.isArray(preParsedQuestions) && preParsedQuestions.length > 0) {
+            questions = preParsedQuestions;
+        } else if (markdown) {
+            // 降级：后端解析
+            questions = parseMarkdown(markdown);
+        } else {
+            return NextResponse.json({ error: "请提供题目内容" }, { status: 400 });
+        }
 
         if (questions.length === 0) {
             return NextResponse.json({ error: "未能解析出题目，请检查格式" }, { status: 400 });
@@ -85,6 +116,8 @@ export async function POST(req: Request) {
                 paperType: paperType || 'REAL',
             }
         });
+
+
 
         // 插入题目
         let count = 0;

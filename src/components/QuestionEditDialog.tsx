@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,7 @@ export function QuestionEditDialog({ question, open, onOpenChange, onSave }: Que
                 try {
                     options = JSON.parse(formData.options);
                 } catch (e) {
-                    alert('选项 JSON 格式错误，请检查格式');
+                    toast.error('选项 JSON 格式错误，请检查格式');
                     setSaving(false);
                     return;
                 }
@@ -86,19 +87,19 @@ export function QuestionEditDialog({ question, open, onOpenChange, onSave }: Que
             console.log('API 响应:', data);
 
             if (res.ok) {
-                alert('题目更新成功！');
+                toast.success('题目更新成功！');
                 onSave();
                 onOpenChange(false);
             } else {
                 const errorMsg = data.details
                     ? `${data.error}\n详情: ${data.details}`
                     : (data.error || '未知错误');
-                alert('更新失败:\n' + errorMsg);
+                toast.error('更新失败:\n' + errorMsg);
                 console.error('API 错误详情:', data);
             }
         } catch (e) {
             console.error('保存出错:', e);
-            alert('更新出错: ' + (e instanceof Error ? e.message : '未知错误'));
+            toast.error('更新出错: ' + (e instanceof Error ? e.message : '未知错误'));
         } finally {
             setSaving(false);
         }

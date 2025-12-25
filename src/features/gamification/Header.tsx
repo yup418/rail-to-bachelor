@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Flame, Star, LogIn, LogOut } from "lucide-react"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
@@ -211,15 +212,42 @@ export function GamificationHeader() {
                     </div>
                 </div>
 
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="text-neutral-600 hover:text-neutral-900"
-                >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">登出</span>
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0 overflow-hidden hover:bg-neutral-100 transition-colors">
+                            <Avatar className="h-9 w-9 border border-neutral-200">
+                                {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.username} />}
+                                <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-500 text-white font-semibold text-xs">
+                                    {user.username.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                        <DropdownMenuLabel className="font-normal">
+                            <div className="flex flex-col space-y-1">
+                                <p className="text-sm font-medium leading-none">{user.username}</p>
+                                <p className="text-xs leading-none text-muted-foreground">
+                                    Lv.{user.level} · {getLevelName(user.level)}
+                                </p>
+                            </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
+                            <div className="flex items-center">
+                                <span className="mr-2">👤</span>
+                                个人中心
+                            </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer">
+                            <div className="flex items-center">
+                                <LogOut className="mr-2 h-4 w-4" />
+                                退出登录
+                            </div>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
     )

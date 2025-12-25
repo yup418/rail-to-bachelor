@@ -1,60 +1,36 @@
+FROM node:20-alpine
 
-FROM node:20-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
-# Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-# 使用 install 代替 ci 以容忍 lock 文件不匹配的问题
-RUN npm install --ignore-scripts
-
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN npx prisma generate
-RUN npm run build
-
-# Production image, copy all the files and run next
-FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-# Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Install openssl for Prisma and use Aliyun mirror
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk add --no-cache libc6-compat openssl
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# 将本地构建好的 standalone 目录复制进去
+COPY --chown=nextjs:nodejs .next/standalone ./
+# 还需要复制静态资源
+COPY --chown=nextjs:nodejs .next/static ./.next/static
+COPY --chown=nextjs:nodejs public ./public
+# 复制 prisma 目录以便运行 migration
+COPY --chown=nextjs:nodejs prisma ./prisma
 
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Copy prisma directory for migrations/push
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# 在本地安装 Prisma CLI (v5.22.0)，确保 nextjs 用户可以调用且有权限写入
+RUN npm install prisma@5.22.0 --save-dev --ignore-scripts
+
+# 修复权限，因为上面的 npm install 是用 root 运行的
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT=3000
-# set hostname to localhost
-ENV HOSTNAME="0.0.0.0"
-
-# We use a custom entrypoint to run prisma push before starting next
-# Using shell form to support &&
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node server.js"]
+# 直接调用 node_modules 里的 prisma，不走 npx 自动下载逻辑
+CMD ["sh", "-c", "./node_modules/.bin/prisma db push --accept-data-loss --skip-generate && node server.js"]

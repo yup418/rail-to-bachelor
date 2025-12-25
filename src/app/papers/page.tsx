@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -70,16 +71,16 @@ function PapersContent() {
             });
 
             if (res.ok) {
-                alert('试卷已删除');
+                toast.success('试卷已删除');
                 // 重新加载试卷列表
                 setPapers(papers.filter(p => p.id !== paperId));
             } else {
                 const data = await res.json();
-                alert(`删除失败: ${data.error || '未知错误'}`);
+                toast.error(`删除失败: ${data.error || '未知错误'}`);
             }
         } catch (error) {
             console.error('Delete error:', error);
-            alert('删除失败，请检查网络连接');
+            toast.error('删除失败，请检查网络连接');
         }
     };
 

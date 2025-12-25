@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ interface Tag {
 interface Question {
     id: string;
     content: string;
+    passage?: string | null;
     type: string;
     options: string | null;
     answer: string;
@@ -129,14 +131,14 @@ export default function PaperExamPage() {
             });
 
             if (response.ok) {
-                alert('✅ 进度已保存！');
+                toast.success('✅ 进度已保存！');
                 router.push(`/papers?subject=${paper.subject}&type=${paper.paperType}`);
             } else {
-                alert('❌ 保存失败，请重试');
+                toast.error('❌ 保存失败，请重试');
             }
         } catch (error) {
             console.error('Save progress error:', error);
-            alert('❌ 保存失败，请检查网络连接');
+            toast.error('❌ 保存失败，请检查网络连接');
         }
     };
 
@@ -237,15 +239,15 @@ export default function PaperExamPage() {
             });
 
             if (res.ok) {
-                alert('题目已删除');
+                toast.success('题目已删除');
                 loadPaper(); // 重新加载试卷
             } else {
                 const data = await res.json();
-                alert('删除失败: ' + (data.error || '未知错误'));
+                toast.error('删除失败: ' + (data.error || '未知错误'));
             }
         } catch (e) {
             console.error(e);
-            alert('删除出错');
+            toast.error('删除出错');
         }
     };
 
@@ -275,7 +277,7 @@ export default function PaperExamPage() {
         if (!paper) return;
         const unanswered = paper.questions.filter(q => !userAnswers.has(q.id));
         if (unanswered.length > 0) {
-            alert(`还有 ${unanswered.length} 道题未作答，请完成所有题目后再提交！`);
+            toast.warning(`还有 ${unanswered.length} 道题未作答，请完成所有题目后再提交！`);
             return;
         }
         if (confirm('确定要提交答卷吗？提交后将无法修改。')) {
@@ -731,99 +733,129 @@ export default function PaperExamPage() {
                 </div>
 
                 {/* 右侧：题目内容 */}
-                <div className="flex-1">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={currentIndex}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <Card className="shadow-lg">
-                                <CardContent className="p-8 space-y-6">
-                                    {/* 题目头部 */}
-                                    <div className="flex items-center justify-between pb-4 border-b">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
-                                                {currentIndex + 1}
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold">第 {currentIndex + 1} 题</div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    共 {paper.questions.length} 题
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Badge>{currentQuestion.type === 'CHOICE' ? '选择题' : '其他'}</Badge>
-                                            {currentQuestion.tags && currentQuestion.tags.length > 0 && (
-                                                <>
-                                                    {currentQuestion.tags.map((tag) => (
-                                                        <Badge key={tag.id} variant="secondary" className="text-xs">
-                                                            {tag.name}
-                                                        </Badge>
-                                                    ))}
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* 题目内容 */}
-                                    <div className="text-lg leading-relaxed">
-                                        <MathText text={currentQuestion.content} />
-                                    </div>
-
-                                    {/* 选项 */}
-                                    {currentQuestion.type === 'CHOICE' && (
-                                        <div className="space-y-3">
-                                            {currentOptions.map((opt, i) => {
-                                                const optLabel = opt.charAt(0);
-                                                const isSelected = currentUserAnswer === optLabel;
-
-                                                return (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => handleAnswer(currentQuestion.id, optLabel)}
-                                                        className={`
-                                                            w-full p-4 rounded-xl border-2 text-left transition-all
-                                                            ${isSelected
-                                                                ? 'border-blue-500 bg-blue-50 shadow-md scale-[1.02]'
-                                                                : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                                                            }
-                                                        `}
-                                                    >
-                                                        <MathText text={opt} className="text-base" />
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* 导航按钮 */}
-                                    <div className="flex justify-between pt-6 border-t">
-                                        <Button
-                                            onClick={handlePrevious}
-                                            disabled={currentIndex === 0}
-                                            variant="outline"
-                                            size="lg"
-                                        >
-                                            <ChevronLeft className="w-4 h-4 mr-2" />
-                                            上一题
-                                        </Button>
-                                        <Button
-                                            onClick={handleNext}
-                                            disabled={currentIndex === paper.questions.length - 1}
-                                            size="lg"
-                                        >
-                                            下一题
-                                            <ChevronRight className="w-4 h-4 ml-2" />
-                                        </Button>
+                {/* 右侧：题目内容区 */}
+                <div className="flex-1 flex gap-6 min-w-0">
+                    {/* 阅读理解文章区域 - 仅在有文章时显示 */}
+                    {currentQuestion.passage && (
+                        <div className="hidden lg:block flex-1 max-w-[45%]">
+                            <Card className="h-[calc(100vh-120px)] sticky top-24 overflow-hidden flex flex-col shadow-md border-l-4 border-l-blue-500">
+                                <div className="p-4 border-b bg-blue-50/50 flex items-center gap-2">
+                                    <span className="font-bold text-blue-700">📄 阅读材料</span>
+                                </div>
+                                <CardContent className="p-6 overflow-y-auto flex-1">
+                                    <div className="prose prose-slate max-w-none dark:prose-invert">
+                                        <MathText text={currentQuestion.passage} className="leading-loose text-base" />
                                     </div>
                                 </CardContent>
                             </Card>
-                        </motion.div>
-                    </AnimatePresence>
+                        </div>
+                    )}
+
+                    {/* 题目卡片 */}
+                    <div className="flex-1 min-w-0">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentIndex}
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <Card className="shadow-lg h-full">
+                                    <CardContent className="p-8 space-y-6">
+                                        {/* 移动端/小屏幕下的阅读材料折叠面板 - 可选，这里暂不实现，假设小屏幕用户上下滚动 */}
+                                        {currentQuestion.passage && (
+                                            <div className="lg:hidden mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                                <div className="font-semibold text-blue-700 mb-2">阅读材料</div>
+                                                <div className="max-h-40 overflow-y-auto text-sm text-muted-foreground">
+                                                    <MathText text={currentQuestion.passage} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* 题目头部 */}
+                                        <div className="flex items-center justify-between pb-4 border-b">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                                                    {currentIndex + 1}
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold">第 {currentIndex + 1} 题</div>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        共 {paper.questions.length} 题
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge>{currentQuestion.type === 'CHOICE' ? '选择题' : '其他'}</Badge>
+                                                {currentQuestion.tags && currentQuestion.tags.length > 0 && (
+                                                    <>
+                                                        {currentQuestion.tags.map((tag) => (
+                                                            <Badge key={tag.id} variant="secondary" className="text-xs">
+                                                                {tag.name}
+                                                            </Badge>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* 题目内容 */}
+                                        <div className="text-lg leading-relaxed">
+                                            <MathText text={currentQuestion.content} />
+                                        </div>
+
+                                        {/* 选项 */}
+                                        {currentQuestion.type === 'CHOICE' && (
+                                            <div className="space-y-3">
+                                                {currentOptions.map((opt, i) => {
+                                                    const optLabel = opt.charAt(0);
+                                                    const isSelected = currentUserAnswer === optLabel;
+
+                                                    return (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => handleAnswer(currentQuestion.id, optLabel)}
+                                                            className={`
+                                                                w-full p-4 rounded-xl border-2 text-left transition-all
+                                                                ${isSelected
+                                                                    ? 'border-blue-500 bg-blue-50 shadow-md scale-[1.02]'
+                                                                    : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                                                                }
+                                                            `}
+                                                        >
+                                                            <MathText text={opt} className="text-base" />
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* 导航按钮 */}
+                                        <div className="flex justify-between pt-6 border-t mt-auto">
+                                            <Button
+                                                onClick={handlePrevious}
+                                                disabled={currentIndex === 0}
+                                                variant="outline"
+                                                size="lg"
+                                            >
+                                                <ChevronLeft className="w-4 h-4 mr-2" />
+                                                上一题
+                                            </Button>
+                                            <Button
+                                                onClick={handleNext}
+                                                disabled={currentIndex === paper.questions.length - 1}
+                                                size="lg"
+                                            >
+                                                下一题
+                                                <ChevronRight className="w-4 h-4 ml-2" />
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
 

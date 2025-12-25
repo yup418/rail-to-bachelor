@@ -177,13 +177,32 @@ export default function ImportPage() {
         return questions;
     };
 
-    // 解析普通题目
+    // 解析普通题目（增强版：支持多段阅读理解交替）
     const parseRegularQuestions = (md: string): ParsedQuestion[] => {
         const questions: ParsedQuestion[] = [];
-        const sections = md.split(/\*\*题目\s+\d+\*\*/);
+        let sections = md.split(/(?:^|\n)\s*(?:\*\*|##)?\s*题目\s*\d+\s*(?:\*\*|##)?\s*(?:\n|$)/);
 
-        for (let i = 1; i < sections.length; i++) {
-            const section = sections[i].trim();
+        let startIdx = 1;
+        let currentPassage = '';
+        let nextPassage = ''; // 用于存储在当前 section 末尾发现的新文章，供下一题使用
+
+        // 1. 初始 Passage 检测 (Section 0)
+        if (sections.length > 1 && sections[0].trim()) {
+            const potentialPassage = sections[0].trim();
+            if (potentialPassage.length > 50 || /Passage|Reading|Text|文章/i.test(potentialPassage)) {
+                currentPassage = potentialPassage;
+            }
+            startIdx = 1;
+        } else if (sections.length === 1 && sections[0].trim()) {
+            startIdx = 0;
+        }
+
+        for (let i = startIdx; i < sections.length; i++) {
+            let section = sections[i].trim();
+            if (!section) continue;
+
+            // 2. 检测该 section 内部（通常在末尾）是否包含下一篇文章的开始
+            // 2. Line-based Passage Detection (更稳健的逐行检测)
             const lines = section.split('\n').map(l => l.trim()).filter(l => l);
 
             let content = '';
@@ -192,26 +211,49 @@ export default function ImportPage() {
             let explanation = '';
             let inExplanation = false;
 
-            for (const line of lines) {
-                if (line.startsWith('题目：') || line.startsWith('题目:')) {
-                    content = line.replace(/^题目[：:]?\s*/, '');
+            // 下一题的新文章内容
+            nextPassage = '';
+
+            for (let j = 0; j < lines.length; j++) {
+                const line = lines[j];
+
+                // 检测是否遇到了新文章的标题
+                // 规则：极度宽容，只要行内包含 Passage/Part/Text + 数字/序号
+                // 允许前面有 markdown 符号、全角空格等
+                // 排除: "According to Passage One" 这样的句子 (通常 header 很短)
+                const isHeader = /(?:^|[\s\W])(Passage|Part|Text|Reading)[\s\W]+(One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|\d+|I+|IV|V|VI|A|B|C|D)(?:$|[\s\W])/i.test(line) && line.length < 60;
+
+                // 只有在已经解析了一些可以算是当前题目内容的东西之后，才允许分割新文章
+                const hasSomeContent = content || inExplanation || options.length > 0;
+
+                if (isHeader && hasSomeContent) {
+                    // 确定发现了新文章！
+                    const remainingLines = lines.slice(j);
+                    nextPassage = remainingLines.join('\n');
+                    break; // 停止解析当前题目，剩下的都是新文章
                 }
-                else if (line.match(/^[A-D][\\.、]\s/)) {
+
+                if (line.match(/^(题目|Question)[：:]/i)) {
+                    content = line.replace(/^(题目|Question)[：:]\s*/i, '');
+                }
+                else if (line.match(/^[A-D][\\.、]/)) {
                     options.push(line);
                 }
-                else if (line.startsWith('Answer:') || line.startsWith('答案：') || line.startsWith('答案:')) {
-                    answer = line.replace(/^(Answer|答案)[：:]?\s*/, '').trim();
+                else if (line.match(/^(Answer|答案)[：:]/i)) {
+                    answer = line.replace(/^(Answer|答案)[：:]\s*/i, '').trim();
                 }
-                else if (line.startsWith('Explanation:') || line.startsWith('解析：') || line.startsWith('解析:')) {
+                else if (line.match(/^(Explanation|解析)[：:]/i)) {
                     inExplanation = true;
-                    const exp = line.replace(/^(Explanation|解析)[：:]?\s*/, '').trim();
+                    const exp = line.replace(/^(Explanation|解析)[：:]\s*/i, '').trim();
                     if (exp) explanation = exp;
                 }
                 else if (inExplanation) {
                     explanation += (explanation ? '\n' : '') + line;
                 }
                 else if (!answer && !inExplanation && options.length === 0) {
-                    content += (content ? ' ' : '') + line;
+                    if (!line.match(/^\s*(##|\*\*)\s*Part/i)) {
+                        content += (content ? '\n' : '') + line;
+                    }
                 }
             }
 
@@ -222,7 +264,14 @@ export default function ImportPage() {
                     options,
                     answer,
                     explanation,
+                    passage: currentPassage || undefined, // 使用**当前**的 passage
                 });
+            }
+
+            // 循环结束前，如果发现了新文章，更新 currentPassage
+            // 这样 i+1 轮次就会使用新文章
+            if (nextPassage) {
+                currentPassage = nextPassage;
             }
         }
 
@@ -250,6 +299,7 @@ export default function ImportPage() {
                     subject,
                     paperType,
                     tags: selectedTags,
+                    questions: parsedQuestions, // 将解析好的题目直接传给后端
                 }),
             });
 
@@ -597,7 +647,7 @@ export default function ImportPage() {
                         <div>
                             <div className="font-semibold mb-2">普通题目格式：</div>
                             <div className="space-y-1 ml-4">
-                                <p>• 每道题以 <code className="bg-muted px-1 rounded">**题目 数字**</code> 开头</p>
+                                <p>• 每道题以 <code className="bg-muted px-1 rounded">题目 数字</code> 或 <code className="bg-muted px-1 rounded">**题目 数字**</code> 开头</p>
                                 <p>• 题目内容以 <code className="bg-muted px-1 rounded">题目：</code> 开头</p>
                                 <p>• 选项以 <code className="bg-muted px-1 rounded">A.</code> <code className="bg-muted px-1 rounded">B.</code> 等开头</p>
                                 <p>• 答案用 <code className="bg-muted px-1 rounded">Answer: A</code> 格式</p>
