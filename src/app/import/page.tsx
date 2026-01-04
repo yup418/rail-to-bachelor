@@ -203,7 +203,7 @@ export default function ImportPage() {
 
             // 2. 检测该 section 内部（通常在末尾）是否包含下一篇文章的开始
             // 2. Line-based Passage Detection (更稳健的逐行检测)
-            const lines = section.split('\n').map(l => l.trim()).filter(l => l);
+            const lines = section.split('\n').map(l => l.trim());
 
             let content = '';
             let options: string[] = [];
@@ -216,6 +216,15 @@ export default function ImportPage() {
 
             for (let j = 0; j < lines.length; j++) {
                 const line = lines[j];
+
+                if (!line) {
+                    if (inExplanation) {
+                        explanation += '\n';
+                    } else if (content && options.length === 0 && !answer) {
+                        content += '\n';
+                    }
+                    continue;
+                }
 
                 // 检测是否遇到了新文章的标题
                 // 规则：极度宽容，只要行内包含 Passage/Part/Text + 数字/序号
@@ -248,11 +257,13 @@ export default function ImportPage() {
                     if (exp) explanation = exp;
                 }
                 else if (inExplanation) {
-                    explanation += (explanation ? '\n' : '') + line;
+                    const needsNewline = explanation.length > 0 && !explanation.endsWith('\n');
+                    explanation += (needsNewline ? '\n' : '') + line;
                 }
                 else if (!answer && !inExplanation && options.length === 0) {
                     if (!line.match(/^\s*(##|\*\*)\s*Part/i)) {
-                        content += (content ? '\n' : '') + line;
+                        const needsNewline = content.length > 0 && !content.endsWith('\n');
+                        content += (needsNewline ? '\n' : '') + line;
                     }
                 }
             }
@@ -610,12 +621,16 @@ export default function ImportPage() {
                                                     )}
                                                     <div className="text-sm mb-2">
                                                         <span className="font-semibold text-green-600">答案: </span>
-                                                        {q.answer || '未识别'}
+                                                        <span className="inline-block align-top">
+                                                            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                                                {q.answer || '未识别'}
+                                                            </ReactMarkdown>
+                                                        </span>
                                                     </div>
                                                     {q.explanation && (
                                                         <div className="text-sm p-3 bg-blue-50 rounded border border-blue-200">
                                                             <div className="font-semibold mb-2">解析:</div>
-                                                            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                                                            <div className="prose prose-sm max-w-none">
                                                                 <ReactMarkdown
                                                                     remarkPlugins={[remarkMath]}
                                                                     rehypePlugins={[rehypeKatex]}
